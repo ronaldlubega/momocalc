@@ -4,12 +4,20 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.dimensionResource
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -21,47 +29,108 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             MomoCalculatorAppTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    MomoCalcScreen(modifier = Modifier.padding(innerPadding))
-                }
+                MomoCalcApp()
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun MomoCalcApp() {
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_small))
+                    ) {
+                        Image(
+                            // Changed from R.mipmap.ic_launcher_round to R.drawable.ic_launcher_foreground
+                            // because painterResource does not support adaptive-icon XML files.
+                            // ic_launcher_foreground is a VectorDrawable which is supported.
+                            painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(dimensionResource(R.dimen.rounded_corner_medium)))
+                        )
+                        Text(
+                            text = stringResource(R.string.app_title),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.primary
+                )
+            )
+        }
+    ) { innerPadding ->
+        MomoCalcScreen(modifier = Modifier.padding(innerPadding))
+    }
+}
+
 @Composable
 fun MomoCalcScreen(modifier: Modifier = Modifier) {
-    // State for the amount input
     var amountInput by remember { mutableStateOf("") }
 
-    // Logic to calculate fee and check for errors
     val amount = amountInput.toDoubleOrNull() ?: 0.0
     val fee = calculateFee(amount)
     val isError = amountInput.isNotEmpty() && amountInput.toDoubleOrNull() == null
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Text(
-            text = stringResource(R.string.app_title),
-            style = MaterialTheme.typography.headlineMedium
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(dimensionResource(R.dimen.padding_medium)),
+            verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_medium)),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = dimensionResource(R.dimen.elevation_low)),
+                shape = RoundedCornerShape(dimensionResource(R.dimen.rounded_corner_medium)),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+            ) {
+                Column(
+                    modifier = Modifier.padding(dimensionResource(R.dimen.padding_medium)),
+                    verticalArrangement = Arrangement.spacedBy(dimensionResource(R.dimen.spacing_medium))
+                ) {
+                    HoistedAmountInput(
+                        amount = amountInput,
+                        onAmountChange = { amountInput = it },
+                        isError = isError
+                    )
 
-        HoistedAmountInput(
-            amount = amountInput,
-            onAmountChange = { amountInput = it },
-            isError = isError
-        )
-
-        if (!isError && amountInput.isNotEmpty()) {
-            Text(
-                text = stringResource(R.string.fee_label, fee.toInt().toString()),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+                    if (!isError && amountInput.isNotEmpty()) {
+                        HorizontalDivider(modifier = Modifier.padding(vertical = dimensionResource(R.dimen.padding_small)))
+                        
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Total Fee:",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "UGX ${fee.toInt()}",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -74,38 +143,52 @@ fun HoistedAmountInput(
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
-        TextField(
+        OutlinedTextField(
             value = amount,
             onValueChange = onAmountChange,
             isError = isError,
             label = { Text(stringResource(R.string.enter_amount)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            shape = RoundedCornerShape(dimensionResource(R.dimen.rounded_corner_medium)),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline
+            )
         )
         if (isError) {
             Text(
                 text = stringResource(R.string.error_numbers_only),
                 color = MaterialTheme.colorScheme.error,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(start = 16.dp, top = 4.dp)
+                modifier = Modifier.padding(
+                    start = dimensionResource(R.dimen.padding_medium),
+                    top = dimensionResource(R.dimen.padding_small)
+                )
             )
         }
     }
 }
 
-/**
- * Simple fee calculation logic.
- * (Example: 0.5% for withdrawal)
- */
 private fun calculateFee(amount: Double): Double {
-    return amount * 0.005
+    return when {
+        amount <= 0 -> 0.0
+        amount <= 5000 -> 100.0
+        amount <= 10000 -> 250.0
+        amount <= 30000 -> 500.0
+        amount <= 60000 -> 1000.0
+        amount <= 125000 -> 2500.0
+        amount <= 250000 -> 4000.0
+        amount <= 500000 -> 5000.0
+        else -> 7000.0
+    }
 }
 
 @Preview(showBackground = true)
 @Composable
 fun DefaultPreview() {
     MomoCalculatorAppTheme {
-        MomoCalcScreen()
+        MomoCalcApp()
     }
 }
